@@ -112,12 +112,9 @@ require('lazy').setup({
     },
   },
 
-  { -- Theme inspired by Atom
-    'navarasu/onedark.nvim',
+  {
+    'cocopon/iceberg.vim',
     priority = 1000,
-    config = function()
-      vim.cmd.colorscheme 'onedark'
-    end,
   },
 
   { -- Set lualine as statusline
@@ -126,7 +123,7 @@ require('lazy').setup({
     opts = {
       options = {
         icons_enabled = false,
-        theme = 'onedark',
+        theme = 'iceberg',
         component_separators = '|',
         section_separators = '',
       },
@@ -170,6 +167,9 @@ require('lazy').setup({
     config = function()
       pcall(require('nvim-treesitter.install').update { with_sync = true })
     end,
+  },
+  {
+    'christoomey/vim-tmux-navigator',
   },
   { -- ChatGPT plugin
     'jackMort/ChatGPT.nvim',
@@ -505,5 +505,7 @@ cmp.setup {
   },
 }
 
+vim.cmd('colorscheme iceberg')
+vim.opt.relativenumber = true
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
