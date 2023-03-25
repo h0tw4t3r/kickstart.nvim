@@ -1,41 +1,3 @@
---[[
-
-=====================================================================
-==================== READ THIS BEFORE CONTINUING ====================
-=====================================================================
-
-Kickstart.nvim is *not* a distribution.
-
-Kickstart.nvim is a template for your own configuration.
-  The goal is that you can read every line of code, top-to-bottom, and understand
-  what your configuration is doing.
-
-  Once you've done that, you should start exploring, configuring and tinkering to
-  explore Neovim!
-
-  If you don't know anything about Lua, I recommend taking some time to read through
-  a guide. One possible example:
-  - https://learnxinyminutes.com/docs/lua/
-
-  And then you can explore or search through `:help lua-guide`
-
-
-Kickstart Guide:
-
-I have left several `:help X` comments throughout the init.lua
-You should run that command and read that help section for more information.
-
-In addition, I have some `NOTE:` items throughout the file.
-These are for you, the reader to help understand what is happening. Feel free to delete
-them once you know what you're doing, but they should serve as a guide for when you
-are first encountering a few different constructs in your nvim config.
-
-I hope you enjoy your Neovim journey,
-- TJ
-
-P.S. You can delete this when you're done too. It's your config now :)
---]]
-
 -- Set <space> as the leader key
 -- See `:help mapleader`
 --  NOTE: Must happen before plugins are required (otherwise wrong leader will be used)
@@ -58,6 +20,13 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
+-- NOTE: This is a recomendation from https://github.com/nvim-tree/nvim-tree.lua
+--   Disable netrw at the very start of your init.lua (strongly advised)
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+--   set termguicolors to enable highlight groups
+vim.opt.termguicolors = true
+
 -- NOTE: Here is where you install your plugins.
 --  You can configure plugins using the `config` key.
 --
@@ -70,8 +39,33 @@ require('lazy').setup({
   'tpope/vim-fugitive',
   'tpope/vim-rhubarb',
 
+  -- Useful pair symbols vim control bindings
+  'tpope/vim-unimpaired',
+
   -- Detect tabstop and shiftwidth automatically
   'tpope/vim-sleuth',
+
+  -- Surround text objects with symbols
+  'tpope/vim-surround',
+
+  -- Intense word variance control
+  'tpope/vim-abolish',
+
+  -- A snazzy bufferline
+  {
+    'akinsho/bufferline.nvim',
+    dependencies = {
+      'nvim-tree/nvim-web-devicons'
+    }
+  },
+
+  -- A file explorer tree for neovim written in lua
+  {
+    'nvim-tree/nvim-tree.lua',
+    dependencies = {
+      'nvim-tree/nvim-web-devicons'
+    }
+  },
 
   -- NOTE: This is where your plugins related to LSP can be installed.
   --  The configuration is done below. Search for lspconfig to find it below.
@@ -113,8 +107,13 @@ require('lazy').setup({
   },
 
   {
-    'cocopon/iceberg.vim',
-    priority = 1000,
+    'rose-pine/neovim',
+    config = function()
+      require('rose-pine').setup({
+        --- @usage 'main'|'moon'|'dawn'
+        dark_variant = 'moon',
+      })
+    end,
   },
 
   { -- Set lualine as statusline
@@ -123,7 +122,7 @@ require('lazy').setup({
     opts = {
       options = {
         icons_enabled = false,
-        theme = 'iceberg',
+        theme = 'rose-pine',
         component_separators = '|',
         section_separators = '',
       },
@@ -179,8 +178,22 @@ require('lazy').setup({
       'nvim-telescope/telescope.nvim'
     },
     config = function()
-      require("chatgpt").setup({})
+      require("chatgpt").setup({
+        keymaps = {
+          submit = "<C-s>",
+        },
+        -- OpenAI bug https://community.openai.com/t/is-edit-endpoint-documentation-incorrect/23361
+        -- openai_edit_params = {
+        --   model = "text-davinci-edit-003"
+        -- }
+      })
     end,
+  },
+  { -- GH AI Copilot
+    'github/copilot.vim',
+  },
+  { -- Auto dark mode switch
+    'f-person/auto-dark-mode.nvim'
   },
 
 
@@ -218,8 +231,10 @@ vim.o.mouse = 'a'
 --  See `:help 'clipboard'`
 vim.o.clipboard = 'unnamedplus'
 
+vim.o.swapfile = false
+
 -- Enable break indent
-vim.o.breakindent = true
+-- vim.o.breakindent = true
 
 -- Save undo history
 vim.o.undofile = true
@@ -300,13 +315,13 @@ vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { de
 -- See `:help nvim-treesitter`
 require('nvim-treesitter.configs').setup {
   -- Add languages to be installed here that you want installed for treesitter
-  ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'tsx', 'typescript', 'help', 'vim' },
+  ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'tsx', 'typescript', 'help', 'vim', 'solidity' },
 
   -- Autoinstall languages that are not installed. Defaults to false (but you can change for yourself!)
   auto_install = false,
 
   highlight = { enable = true },
-  indent = { enable = true, disable = { 'python' } },
+  -- indent = { enable = true, disable = { 'python' } },
   incremental_selection = {
     enable = true,
     keymaps = {
@@ -440,6 +455,9 @@ require('neodev').setup()
 local capabilities = vim.lsp.protocol.make_client_capabilities()
 capabilities = require('cmp_nvim_lsp').default_capabilities(capabilities)
 
+-- GH Copilot stuff
+vim.g.copilot_assume_mapped = true
+
 -- Setup mason so it can manage external tooling
 require('mason').setup()
 
@@ -480,24 +498,8 @@ cmp.setup {
       behavior = cmp.ConfirmBehavior.Replace,
       select = true,
     },
-    ['<Tab>'] = cmp.mapping(function(fallback)
-      if cmp.visible() then
-        cmp.select_next_item()
-      elseif luasnip.expand_or_jumpable() then
-        luasnip.expand_or_jump()
-      else
-        fallback()
-      end
-    end, { 'i', 's' }),
-    ['<S-Tab>'] = cmp.mapping(function(fallback)
-      if cmp.visible() then
-        cmp.select_prev_item()
-      elseif luasnip.jumpable(-1) then
-        luasnip.jump(-1)
-      else
-        fallback()
-      end
-    end, { 'i', 's' }),
+    ['<Tab>'] = vim.NIL,
+    ['<S-Tab>'] = vim.NIL,
   },
   sources = {
     { name = 'nvim_lsp' },
@@ -505,7 +507,25 @@ cmp.setup {
   },
 }
 
-vim.cmd('colorscheme iceberg')
+-- auto dark mode setup
+local auto_dark_mode = require('auto-dark-mode')
+
+auto_dark_mode.setup({
+	update_interval = 1000,
+  -- NOTE: I have no idea why, but on my system the `set_dark_mode` function
+  -- is triggered when the light mode is turned on. So it's mixde up.
+	set_dark_mode = function()
+		vim.api.nvim_set_option('background', 'dark')
+    vim.cmd('colorscheme rose-pine-moon')
+	end,
+	set_light_mode = function()
+		vim.api.nvim_set_option('background', 'light')
+    vim.cmd('colorscheme rose-pine-dawn')
+	end,
+})
+auto_dark_mode.init()
+
+-- vim.cmd('colorscheme rose-pine-moon')
 vim.opt.relativenumber = true
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
