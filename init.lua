@@ -239,6 +239,9 @@ vim.o.swapfile = false
 -- Save undo history
 vim.o.undofile = true
 
+-- Nvim respect cwd
+vim.g.nvim_tree_respect_buf_cwd = 1
+
 -- Case insensitive searching UNLESS /C or capital in search
 vim.o.ignorecase = true
 vim.o.smartcase = true
@@ -277,6 +280,11 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   group = highlight_group,
   pattern = '*',
 })
+
+-- [[ Configure NvimTree ]]
+require("nvim-tree").setup()
+local api = require('nvim-tree.api')
+vim.keymap.set('n', '<leader>t', ':NvimTreeFindFileToggle!<CR>', { desc = '[e] Toggle NvimTree' })
 
 -- [[ Configure Telescope ]]
 -- See `:help telescope` and `:help telescope.setup()`
