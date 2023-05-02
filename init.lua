@@ -19,11 +19,6 @@ if not vim.loop.fs_stat(lazypath) then
     }
 end
 vim.opt.rtp:prepend(lazypath)
-
--- NOTE: This is a recomendation from https://github.com/nvim-tree/nvim-tree.lua
---   Disable netrw at the very start of your init.lua (strongly advised)
-vim.g.loaded_netrw = 1
-vim.g.loaded_netrwPlugin = 1
 --   set termguicolors to enable highlight groups
 vim.opt.termguicolors = true
 
@@ -47,16 +42,11 @@ require("lazy").setup(
         "tpope/vim-surround",
         -- Intense word variance control
         "tpope/vim-abolish",
-        -- A snazzy bufferline
+        -- A better way to navigate
+        "tpope/vim-vinegar",
+        -- A snazzy bufferline,
         {
             "akinsho/bufferline.nvim",
-            dependencies = {
-                "nvim-tree/nvim-web-devicons"
-            }
-        },
-        -- A file explorer tree for neovim written in lua
-        {
-            "nvim-tree/nvim-tree.lua",
             dependencies = {
                 "nvim-tree/nvim-web-devicons"
             }
@@ -77,6 +67,7 @@ require("lazy").setup(
                 "folke/neodev.nvim"
             }
         },
+        "onsails/lspkind.nvim",
         {
             -- Autocompletion
             "hrsh7th/nvim-cmp",
@@ -109,19 +100,19 @@ require("lazy").setup(
                 )
             end
         },
-        {
-            -- Set lualine as statusline
-            "nvim-lualine/lualine.nvim",
-            -- See `:help lualine.txt`
-            opts = {
-                options = {
-                    icons_enabled = false,
-                    theme = "rose-pine",
-                    component_separators = "|",
-                    section_separators = ""
-                }
-            }
-        },
+        -- {
+        --     -- Set lualine as statusline
+        --     "nvim-lualine/lualine.nvim",
+        --     -- See `:help lualine.txt`
+        --     opts = {
+        --         options = {
+        --             icons_enabled = false,
+        --             theme = "rose-pine",
+        --             component_separators = "|",
+        --             section_separators = ""
+        --         }
+        --     }
+        -- },
         {
             -- Add indentation guides even on blank lines
             "lukas-reineke/indent-blankline.nvim",
@@ -184,13 +175,29 @@ require("lazy").setup(
             end
         },
         {
-            -- GH AI Copilot
-            "github/copilot.vim"
+            -- Copilot
+            "zbirenbaum/copilot.lua",
+            cmd = "Copilot",
+            event = "InsertEnter",
+            config = function()
+              require("copilot").setup({
+                suggestion = { enabled = false },
+                panel = { enabled = false },
+              })
+            end,
+        },
+        {
+          "zbirenbaum/copilot-cmp",
+          after = { "copilot.lua" },
+          config = function ()
+            require("copilot_cmp").setup()
+          end
         },
         {
             -- Auto dark mode switch
             "f-person/auto-dark-mode.nvim"
         },
+        'Mofiqul/vscode.nvim',
         -- NOTE: Next Step on Your Neovim Journey: Add/Configure additional "plugins" for kickstart
         --       These are some example plugins that I've included in the kickstart repository.
         --       Uncomment any of the lines below to enable them.
@@ -235,9 +242,6 @@ vim.o.swapfile = false
 -- Save undo history
 vim.o.undofile = true
 
--- Nvim respect cwd
-vim.g.nvim_tree_respect_buf_cwd = 1
-
 -- Case insensitive searching UNLESS /C or capital in search
 vim.o.ignorecase = true
 vim.o.smartcase = true
@@ -258,6 +262,8 @@ vim.o.termguicolors = true
 
 -- [[ Basic Keymaps ]]
 
+vim.keymap.set('n', '<leader>.', "@:", {})
+
 -- Keymaps for better default experience
 -- See `:help vim.keymap.set()`
 vim.keymap.set({"n", "v"}, "<Space>", "<Nop>", {silent = true})
@@ -265,6 +271,12 @@ vim.keymap.set({"n", "v"}, "<Space>", "<Nop>", {silent = true})
 -- Remap for dealing with word wrap
 vim.keymap.set("n", "k", "v:count == 0 ? 'gk' : 'k'", {expr = true, silent = true})
 vim.keymap.set("n", "j", "v:count == 0 ? 'gj' : 'j'", {expr = true, silent = true})
+
+-- [[ Theme setup ]]
+require('vscode').load()
+
+-- [[ Bufferline ]]
+require("bufferline").setup{}
 
 -- [[ Highlight on yank ]]
 -- See `:help vim.highlight.on_yank()`
@@ -279,11 +291,6 @@ vim.api.nvim_create_autocmd(
         pattern = "*"
     }
 )
-
--- [[ Configure NvimTree ]]
-require("nvim-tree").setup()
-local api = require("nvim-tree.api")
-vim.keymap.set("n", "<leader>t", ":NvimTreeFindFileToggle!<CR>", {desc = "[e] Toggle NvimTree"})
 
 -- [[ Configure Telescope ]]
 -- See `:help telescope` and `:help telescope.setup()`
@@ -476,9 +483,6 @@ require("neodev").setup()
 local capabilities = vim.lsp.protocol.make_client_capabilities()
 capabilities = require("cmp_nvim_lsp").default_capabilities(capabilities)
 
--- GH Copilot stuff
-vim.g.copilot_assume_mapped = true
-
 -- Setup mason so it can manage external tooling
 require("mason").setup()
 
@@ -500,53 +504,59 @@ mason_lspconfig.setup_handlers {
 }
 
 -- nvim-cmp setup
-local cmp = require "cmp"
-local luasnip = require "luasnip"
+local cmp = require("cmp")
+local luasnip = require("luasnip")
+local lspkind = require("lspkind")
+
+lspkind.init({
+  symbol_map = {
+    Copilot = "",
+  },
+})
+
+vim.api.nvim_set_hl(0, "CmpItemKindCopilot", {fg ="#6CC644"})
 
 luasnip.config.setup {}
 
 cmp.setup {
+    formatting = {
+      format = lspkind.cmp_format({
+        mode = 'symbol', -- show only symbol annotations
+        maxwidth = 50, -- prevent the popup from showing more than provided characters (e.g 50 will not show more than 50 characters)
+        ellipsis_char = '...', -- when popup menu exceed maxwidth, the truncated part would show ellipsis_char instead (must define maxwidth first)
+
+        -- The function below will be called before any actual modifications from lspkind
+        -- so that you can provide more controls on popup customization. (See [#30](https://github.com/onsails/lspkind-nvim/pull/30))
+        -- before = function (entry, vim_item)
+        --   ...
+        --   return vim_item
+        -- end
+      })
+    },
     snippet = {
         expand = function(args)
             luasnip.lsp_expand(args.body)
         end
     },
     mapping = cmp.mapping.preset.insert {
-        ["<C-d>"] = cmp.mapping.scroll_docs(-4),
+        ["<Tab>"] = cmp.mapping.select_next_item(),
+        ["<S-Tab>"] = cmp.mapping.select_prev_item(),
+        ["<C-b>"] = cmp.mapping.scroll_docs(-4),
         ["<C-f>"] = cmp.mapping.scroll_docs(4),
         ["<C-Space>"] = cmp.mapping.complete {},
         ["<CR>"] = cmp.mapping.confirm {
             behavior = cmp.ConfirmBehavior.Replace,
             select = true
         },
-        ["<Tab>"] = vim.NIL,
-        ["<S-Tab>"] = vim.NIL
+        ["<C-n>"] = vim.NIL,
+        ["<C-p>"] = vim.NIL
     },
     sources = {
+        {name = "copilot"},
         {name = "nvim_lsp"},
         {name = "luasnip"}
     }
 }
-
--- auto dark mode setup
-local auto_dark_mode = require("auto-dark-mode")
-
-auto_dark_mode.setup(
-    {
-        update_interval = 1000,
-        -- NOTE: I have no idea why, but on my system the `set_dark_mode` function
-        -- is triggered when the light mode is turned on. So it's mixde up.
-        set_dark_mode = function()
-            vim.api.nvim_set_option("background", "dark")
-            vim.cmd("colorscheme rose-pine-moon")
-        end,
-        set_light_mode = function()
-            vim.api.nvim_set_option("background", "light")
-            vim.cmd("colorscheme rose-pine-dawn")
-        end
-    }
-)
-auto_dark_mode.init()
 
 -- vim.cmd('colorscheme rose-pine-moon')
 vim.opt.relativenumber = true
